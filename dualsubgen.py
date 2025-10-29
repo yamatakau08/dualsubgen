@@ -60,7 +60,7 @@ def main():
         segments = asyncio.run(process_segments())
         for i, seg in enumerate(segments, 1):
             t1, t2 = fmt_time(seg["start"]), fmt_time(seg["end"])
-            orig = seg["text"]
+            orig = seg["text"].lstrip()
             trans = seg['text_ja']
             block = f"{i}\n{t1} --> {t2}\n{orig}\n{trans}\n\n"
             f.write(block)
