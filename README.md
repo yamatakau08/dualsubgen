@@ -30,6 +30,8 @@ This command will:
 
 2. Generate a new dual-language subtitle file named title.srt within that directory.
 
+![demo](./demo.gif)
+
 ## Enjoy bilingual subtitles
 
 To view the merged subtitles, load the downloaded movie and the generated subtitle file (title.srt) into a compatible video player,
