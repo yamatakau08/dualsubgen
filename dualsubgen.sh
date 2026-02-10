@@ -17,11 +17,6 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-if [ -f "${output_file}" ]; then
-    echo "status エラー: 動画タイトルの取得に失敗しました。URLを確認してください。" >&2
-    exit 1
-fi
-
 yt-dlp -f 'b[ext=mp4]' --output ${outputtemplate} $url \
 || {
     echo "ERROR: mp4ダウンロードに失敗しました。URL: $url"
