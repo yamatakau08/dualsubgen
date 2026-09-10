@@ -18,6 +18,12 @@ It is primarily aimed at **language learners or bilingual viewers** who wish to 
 
 ## Usage
 
+Execute `nix develop` to make environment for `dualsubgen`.
+
+```bash
+nix develop
+```
+
 Execute the shell script with the video URL as an argument:
 
 ```bash
