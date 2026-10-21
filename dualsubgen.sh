@@ -1,41 +1,47 @@
 #!/usr/bin/env bash
+set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &> /dev/null && pwd)"
-
-url=$1
-
-if [ -z $url ]; then
+usage() {
     echo "Usage: $0 <video url>" >&2
     exit 1
-fi
+}
 
-outputtemplate='%(title)s/%(title)s.%(ext)s'
-output_file=$(yt-dlp --get-filename --output ${outputtemplate} --simulate "$url")
+url="${1:-}"
+[ -z "$url" ] && usage
 
-if [ $? -ne 0 ]; then
-    echo "status エラー: 動画タイトルの取得に失敗しました。URLを確認してください。" >&2
+# Check that required commands are available
+for cmd in yt-dlp ffmpeg python3; do
+    command -v "$cmd" >/dev/null 2>&1 || {
+        echo "ERROR: '$cmd' not found in PATH." >&2
+        exit 1
+    }
+done
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &> /dev/null && pwd)"
+output_template='%(title)s/%(title)s.%(ext)s'
+
+# Get the expected output filename in advance
+# (--no-playlist restricts processing to a single video)
+video_file="$(yt-dlp --ignore-config --no-playlist \
+    --get-filename --output "$output_template" --simulate "$url")"
+echo "Target file: ${video_file}"
+
+# Download the video (overwrite existing files when re-running)
+yt-dlp --ignore-config --no-playlist \
+    --force-overwrites --output "$output_template" "$url" \
+    || { echo "ERROR: yt-dlp download error!" >&2; exit 1; }
+
+# Verify the file actually exists (guards against extension mismatches)
+if [ ! -f "$video_file" ]; then
+    echo "ERROR: downloaded file not found: $video_file" >&2
     exit 1
 fi
 
-yt-dlp -f 'b[ext=mp4]' --output ${outputtemplate} $url \
-|| {
-    echo "ERROR: mp4ダウンロードに失敗しました。URL: $url"
-    exit 1;
-}
+# Extract audio from the video file with ffmpeg
+audio_file="${video_file%.*}.mp3"
+ffmpeg -hide_banner -loglevel error -y -i "$video_file" -vn "$audio_file" \
+    || { echo "ERROR: ffmpeg mp3 extraction error!" >&2; exit 1; }
 
-echo "extract the audio mp3 file to generate srt file!"
-yt-dlp -t mp3 --output ${outputtemplate} $url \
-|| {
-    echo "ERROR: mp3ダウンロードに失敗しました。URL: $url" >&2
-    exit 1;
-}
-
-mp3_file=${output_file%.*}.mp3
-
-if [ ! -f "${mp3_file}" ]; then
-    echo "致命的なエラー: ダウンロード後にMP3ファイルが見つかりません。" >&2
-    exit 1
-fi
-
-python "${SCRIPT_DIR}/dualsubgen.py" "${mp3_file}"
-
+# Generate subtitles
+python3 "${SCRIPT_DIR}/dualsubgen.py" "$audio_file" \
+    || { echo "ERROR: subtitle generation failed!" >&2; exit 1; }
